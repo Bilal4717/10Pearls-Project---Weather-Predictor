@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import config
-from utils.aqicn_client import AQICNClient
+from utils.aqi_source import get_current_aqi, get_historical_aqi
 from utils.feature_engineering import compute_features, merge_aqi_weather
 from utils.hopsworks_utils import insert_features, read_feature_group
 from utils.logging_config import setup_logging
@@ -30,10 +30,9 @@ def fetch_current_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     Returns:
         Tuple of (aqi_df, weather_df) as single-row DataFrames.
     """
-    aqi_client = AQICNClient()
     weather_client = OpenMeteoClient()
 
-    aqi = aqi_client.get_current(config.AQICN_STATION)
+    aqi = get_current_aqi()
     weather = weather_client.get_current()
 
     if aqi is None or weather is None:
@@ -54,19 +53,17 @@ def fetch_date_data(date_str: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     Returns:
         Tuple of (aqi_df, weather_df).
     """
-    aqi_client = AQICNClient()
     weather_client = OpenMeteoClient()
 
-    aqi = aqi_client.get_historical(config.AQICN_STATION, date_str)
+    aqi_hist = get_historical_aqi(date_str, date_str)
     weather_hist = weather_client.get_historical(date_str, date_str)
 
-    if aqi is None:
+    if aqi_hist is None or aqi_hist.empty:
         raise RuntimeError(f"No AQI data for {date_str}")
     if weather_hist is None or weather_hist.empty:
         raise RuntimeError(f"No weather data for {date_str}")
 
-    aqi_df = pd.DataFrame([aqi])
-    return aqi_df, weather_hist
+    return aqi_hist, weather_hist
 
 
 def run(date: str | None = None) -> None:

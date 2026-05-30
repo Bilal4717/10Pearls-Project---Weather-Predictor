@@ -6,10 +6,16 @@ from typing import Dict, List
 
 # Location
 CITY: str = "karachi"
-AQICN_STATION: str = "@7064"
+# AQICN no longer has a live Karachi station (US Consulate @11790 stopped
+# reporting in 2025). Open-Meteo Air Quality is the primary AQI source; AQICN
+# (@11790) is kept only as an optional fallback.
+AQICN_STATION: str = "@11790"
 LATITUDE: float = 24.8607
 LONGITUDE: float = 67.0011
 TIMEZONE: str = "Asia/Karachi"
+
+# Primary AQI source toggle
+USE_OPENMETEO_AQI: bool = True
 
 # Forecast horizons (hours ahead)
 FORECAST_HORIZONS: List[int] = [24, 48, 72]
@@ -62,6 +68,20 @@ BACKFILL_DEFAULT_DAYS: int = 90
 AQICN_BASE_URL: str = "https://api.waqi.info"
 OPENMETEO_ARCHIVE_URL: str = "https://archive-api.open-meteo.com/v1/archive"
 OPENMETEO_FORECAST_URL: str = "https://api.open-meteo.com/v1/forecast"
+OPENMETEO_AQI_URL: str = "https://air-quality-api.open-meteo.com/v1/air-quality"
+
+# Open-Meteo air-quality hourly variables → internal column names
+OPENMETEO_AQI_VARS: Dict[str, str] = {
+    "us_aqi": "aqi",
+    "pm2_5": "pm25",
+    "pm10": "pm10",
+    "nitrogen_dioxide": "no2",
+    "ozone": "o3",
+    "carbon_monoxide": "co",
+    "sulphur_dioxide": "so2",
+}
+# Open-Meteo air-quality history is limited to the most recent ~92 days
+OPENMETEO_AQI_MAX_HISTORY_DAYS: int = 90
 
 # Logging
 LOG_DIR: str = "logs"

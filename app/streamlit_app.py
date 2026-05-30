@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT))
 
 import config
 from utils.alerts import check_alerts, get_aqi_category
-from utils.aqicn_client import AQICNClient
+from utils.aqi_source import get_current_aqi
 from utils.hopsworks_utils import read_feature_group
 from utils.inference import get_feature_importance, predict_forecast
 from utils.openmeteo_client import OpenMeteoClient
@@ -69,7 +69,7 @@ def fetch_current_local() -> dict:
     Returns:
         Dict with aqi and weather keys.
     """
-    aqi = AQICNClient().get_current(config.AQICN_STATION)
+    aqi = get_current_aqi()
     weather = OpenMeteoClient().get_current()
     return {"aqi": aqi, "weather": weather}
 

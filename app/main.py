@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 import config
-from utils.aqicn_client import AQICNClient
+from utils.aqi_source import get_current_aqi
 from utils.alerts import check_alerts, get_aqi_category
 from utils.hopsworks_utils import read_feature_group
 from utils.inference import get_feature_importance, predict_forecast
@@ -55,9 +55,8 @@ def current() -> Dict[str, Any]:
     Raises:
         HTTPException: If data fetch fails.
     """
-    aqi_client = AQICNClient()
     weather_client = OpenMeteoClient()
-    aqi = aqi_client.get_current(config.AQICN_STATION)
+    aqi = get_current_aqi()
     weather = weather_client.get_current()
     if aqi is None:
         raise HTTPException(status_code=503, detail="Failed to fetch current AQI")
@@ -79,9 +78,8 @@ def forecast() -> Dict[str, Any]:
     Raises:
         HTTPException: On prediction failure.
     """
-    aqi_client = AQICNClient()
     weather_client = OpenMeteoClient()
-    aqi = aqi_client.get_current(config.AQICN_STATION)
+    aqi = get_current_aqi()
     weather = weather_client.get_current()
     if aqi is None or weather is None:
         raise HTTPException(status_code=503, detail="Failed to fetch live data")

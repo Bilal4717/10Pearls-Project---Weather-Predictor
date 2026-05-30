@@ -6,8 +6,8 @@ End-to-end Air Quality Index (AQI) prediction system for **Karachi, Pakistan**. 
 
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────────┐
-│  AQICN API      │     │  Open-Meteo API  │     │  GitHub Actions     │
-│  (AQI/pollut.)  │     │  (weather)       │     │  (hourly + daily)   │
+│ Open-Meteo AQ   │     │  Open-Meteo API  │     │  GitHub Actions     │
+│ (AQI/pollut.)   │     │  (weather)       │     │  (hourly + daily)   │
 └────────┬────────┘     └────────┬─────────┘     └──────────┬──────────┘
          │                       │                          │
          └───────────┬───────────┘                          │
@@ -60,12 +60,24 @@ aqi-predictor/
 └── .env.example
 ```
 
+## Data Sources
+
+| Source | Role | Auth |
+|--------|------|------|
+| [Open-Meteo Air Quality](https://open-meteo.com/en/docs/air-quality-api) | **Primary** AQI + pollutants (PM2.5/PM10/NO₂/O₃/CO/SO₂, US AQI) for Karachi — hourly history + forecast | None |
+| [Open-Meteo Weather](https://open-meteo.com/) | Weather features (temp, humidity, wind, etc.) | None |
+| [AQICN](https://aqicn.org/) | **Optional fallback** AQI source (`@11790`, Karachi US Consulate) | Token |
+
+> **Why Open-Meteo for AQI?** AQICN no longer has a live Karachi station (the US Consulate station `@11790` stopped reporting in 2025), so Open-Meteo's Air Quality API is used as the reliable primary source. Set `USE_OPENMETEO_AQI = False` in `config.py` to prefer AQICN.
+
 ## Prerequisites
 
-- Python 3.11+
-- [AQICN API token](https://aqicn.org/data-platform/token/)
+- Python 3.11+ (3.12 also works locally; **avoid 3.14** — no wheels yet for `torch`/`hopsworks`)
 - [Hopsworks](https://www.hopsworks.ai/) account (free tier)
+- (Optional) [AQICN API token](https://aqicn.org/data-platform/token/) for the fallback source
 - GitHub repository (for Actions)
+
+> **Windows note:** `hopsworks` requires Microsoft C++ Build Tools to install locally (its `twofish` dependency is compiled). It installs cleanly on GitHub Actions (Linux), so the recommended workflow is to run the backfill/training pipelines via Actions.
 
 ## Setup
 
@@ -100,10 +112,10 @@ HOPSWORKS_API_KEY=your_hopsworks_api_key
 ### 4. Backfill historical data
 
 ```bash
-python pipelines/backfill_pipeline.py --start-date 2025-02-01 --end-date 2025-05-27
+python pipelines/backfill_pipeline.py
 ```
 
-Default: last 90 days.
+Default: last 90 days. Open-Meteo Air Quality only retains ~92 days of history, so keep the range within the last 90 days. (On Windows, prefer running the **Backfill Pipeline** GitHub Action instead — see below.)
 
 ### 5. Run feature pipeline (manual test)
 
@@ -168,10 +180,16 @@ curl http://localhost:8000/forecast
 3. Add secrets:
    - `AQICN_TOKEN`
    - `HOPSWORKS_API_KEY`
-4. Workflows run automatically:
+4. Workflows:
+   - **Backfill Pipeline**: manual (`workflow_dispatch`) — run this **first** to populate history. Optional `start_date` / `end_date` inputs (defaults to last 90 days).
    - **Feature Pipeline**: every hour (`0 * * * *`)
    - **Training Pipeline**: daily at 02:00 UTC (`0 2 * * *`)
 5. Use **Actions → workflow → Run workflow** for manual runs
+
+**Recommended first run order (all in GitHub Actions):**
+1. **Backfill Pipeline** → populates ~90 days of hourly features
+2. **Feature Pipeline** → confirms hourly ingestion works
+3. **Training Pipeline** → trains and registers the best model
 
 ## Deploy Streamlit Cloud
 
@@ -197,7 +215,8 @@ Best model (lowest average RMSE across t24/t48/t72) is registered with SHAP expl
 
 ## Karachi Notes
 
-- Station: `@7064` on AQICN
+- Primary AQI source: Open-Meteo Air Quality API (coordinates-based, no station needed)
+- AQICN fallback station: `@11790` (Karachi US Consulate, currently inactive)
 - Coordinates: 24.8607°N, 67.0011°E
 - Timezone: Asia/Karachi (UTC+5)
 - Typical AQI: 100–200 (traffic + industrial)
