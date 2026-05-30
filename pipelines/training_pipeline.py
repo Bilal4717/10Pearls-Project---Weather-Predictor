@@ -196,8 +196,24 @@ def run() -> None:
         )
 
     df = df.sort_values("timestamp").reset_index(drop=True)
+
+    # Drop feature columns that are entirely NaN (e.g. ``visibility`` is not
+    # provided by the Open-Meteo historical archive API).
+    all_nan_cols = [c for c in df.columns if df[c].isna().all()]
+    if all_nan_cols:
+        logger.warning("Dropping all-NaN feature columns: %s", all_nan_cols)
+        df = df.drop(columns=all_nan_cols)
+
+    # Targets must be present; remaining feature NaNs (early lag/rolling rows)
+    # are filled rather than dropping the entire dataset.
+    df = df.dropna(subset=config.TARGET_COLUMNS).reset_index(drop=True)
     feature_cols = get_feature_columns(df)
-    df = df.dropna(subset=feature_cols + config.TARGET_COLUMNS)
+    df[feature_cols] = df[feature_cols].fillna(0)
+
+    if len(df) < 200:
+        raise RuntimeError(
+            f"Insufficient usable training data ({len(df)} rows after cleaning)."
+        )
 
     X_train, X_val, X_test, y_train, y_val, y_test = time_based_split(df, feature_cols)
 
