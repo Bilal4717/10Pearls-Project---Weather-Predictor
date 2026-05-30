@@ -144,6 +144,11 @@ def insert_features(df: pd.DataFrame, upsert: bool = True) -> None:
         return
     out = df.copy()
     out["timestamp"] = pd.to_datetime(out["timestamp"], utc=True)
+    # Normalize float columns to float32 so the live (float64/"double") path
+    # matches the feature group schema created during backfill (float32/"float").
+    float_cols = out.select_dtypes(include=["float64", "float32"]).columns
+    if len(float_cols) > 0:
+        out[float_cols] = out[float_cols].astype("float32")
     fg = get_or_create_feature_group()
     fg.insert(out, write_options={"wait_for_job": True})
     logger.info("Inserted %d rows into feature group.", len(out))
