@@ -128,6 +128,62 @@ def read_feature_group(
         return pd.DataFrame()
 
 
+# Hopsworks (offline/Hive) type -> pandas dtype
+_HOPSWORKS_TYPE_TO_PANDAS = {
+    "float": "float32",
+    "double": "float64",
+    "bigint": "int64",
+    "int": "int32",
+    "smallint": "int16",
+    "tinyint": "int8",
+    "boolean": "bool",
+}
+
+
+def _conform_to_schema(df: pd.DataFrame, fg) -> pd.DataFrame:
+    """Cast DataFrame columns to match an existing feature group schema.
+
+    The feature group can have a mixed float32/float64 schema depending on how
+    each source produced its data, so live inserts must match the stored types
+    exactly to pass Hopsworks schema validation.
+
+    Args:
+        df: DataFrame to conform.
+        fg: Target feature group (may be newly created without features yet).
+
+    Returns:
+        DataFrame with dtypes matching the feature group where possible.
+    """
+    try:
+        features = fg.features or []
+    except Exception:
+        features = []
+    if not features:
+        return df
+
+    out = df.copy()
+    for feature in features:
+        name = feature.name
+        ftype = str(getattr(feature, "type", "")).lower()
+        if name not in out.columns:
+            continue
+        if ftype in ("timestamp", "date"):
+            out[name] = pd.to_datetime(out[name], utc=True)
+            continue
+        target = _HOPSWORKS_TYPE_TO_PANDAS.get(ftype)
+        if target is None:
+            continue
+        try:
+            if target.startswith("int") and out[name].isnull().any():
+                # Avoid int cast errors on NaN; fall back to float64.
+                out[name] = out[name].astype("float64")
+            else:
+                out[name] = out[name].astype(target)
+        except (ValueError, TypeError):
+            logger.debug("Could not cast %s to %s; leaving as-is.", name, target)
+    return out
+
+
 def insert_features(df: pd.DataFrame, upsert: bool = True) -> None:
     """Insert rows into the feature group.
 
@@ -144,12 +200,8 @@ def insert_features(df: pd.DataFrame, upsert: bool = True) -> None:
         return
     out = df.copy()
     out["timestamp"] = pd.to_datetime(out["timestamp"], utc=True)
-    # Normalize float columns to float32 so the live (float64/"double") path
-    # matches the feature group schema created during backfill (float32/"float").
-    float_cols = out.select_dtypes(include=["float64", "float32"]).columns
-    if len(float_cols) > 0:
-        out[float_cols] = out[float_cols].astype("float32")
     fg = get_or_create_feature_group()
+    out = _conform_to_schema(out, fg)
     fg.insert(out, write_options={"wait_for_job": True})
     logger.info("Inserted %d rows into feature group.", len(out))
 
