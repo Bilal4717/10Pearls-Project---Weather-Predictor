@@ -13,9 +13,14 @@ import config
 
 logger = logging.getLogger(__name__)
 
+# Module-level caches to avoid repeated logins during a single run.
+_PROJECT = None
+_FEATURE_STORE = None
+_FEATURE_GROUP = None
+
 
 def get_project():
-    """Log in to Hopsworks and return the project.
+    """Log in to Hopsworks and return the (cached) project.
 
     ``hopsworks.login`` returns a ``Project`` object directly, so the project
     name is passed to ``login`` rather than fetched from a separate connection.
@@ -26,52 +31,72 @@ def get_project():
     Raises:
         ValueError: If ``HOPSWORKS_API_KEY`` is not set.
     """
-    api_key = os.getenv("HOPSWORKS_API_KEY")
-    if not api_key:
-        raise ValueError("HOPSWORKS_API_KEY environment variable is required.")
-    return hopsworks.login(
-        api_key_value=api_key,
-        project=config.HOPSWORKS_PROJECT,
-    )
+    global _PROJECT
+    if _PROJECT is None:
+        api_key = os.getenv("HOPSWORKS_API_KEY")
+        if not api_key:
+            raise ValueError("HOPSWORKS_API_KEY environment variable is required.")
+        _PROJECT = hopsworks.login(
+            api_key_value=api_key,
+            project=config.HOPSWORKS_PROJECT,
+        )
+    return _PROJECT
 
 
 def get_feature_store():
-    """Return the project's feature store handle.
+    """Return the project's (cached) feature store handle.
 
     Returns:
         Hopsworks FeatureStore instance.
     """
-    project = get_project()
-    return project.get_feature_store()
+    global _FEATURE_STORE
+    if _FEATURE_STORE is None:
+        _FEATURE_STORE = get_project().get_feature_store()
+    return _FEATURE_STORE
 
 
-def get_or_create_feature_group(fg=None):
-    """Get existing feature group or create with standard schema.
+def get_or_create_feature_group():
+    """Get the existing feature group or create it with the standard schema.
 
-    Args:
-        fg: Optional pre-fetched feature group.
+    The current Hopsworks SDK returns ``None`` from ``get_feature_group`` when
+    the group does not exist (rather than raising), so the ``None`` case is
+    handled explicitly before creating.
 
     Returns:
-        Feature group object.
+        Feature group object (never ``None``).
     """
+    global _FEATURE_GROUP
+    if _FEATURE_GROUP is not None:
+        return _FEATURE_GROUP
+
     fs = get_feature_store()
-    if fg is not None:
-        return fg
+    fg = None
     try:
-        return fs.get_feature_group(
+        fg = fs.get_feature_group(
             name=config.FEATURE_GROUP_NAME,
             version=config.FEATURE_GROUP_VERSION,
         )
-    except Exception:
-        logger.info("Creating feature group %s v%s", config.FEATURE_GROUP_NAME, config.FEATURE_GROUP_VERSION)
-        return fs.create_feature_group(
+    except Exception as exc:
+        logger.info("get_feature_group raised (%s); will create.", exc)
+        fg = None
+
+    if fg is None:
+        logger.info(
+            "Creating feature group %s v%s",
+            config.FEATURE_GROUP_NAME,
+            config.FEATURE_GROUP_VERSION,
+        )
+        fg = fs.create_feature_group(
             name=config.FEATURE_GROUP_NAME,
             version=config.FEATURE_GROUP_VERSION,
             description="Hourly AQI + weather features for Karachi forecasting",
             primary_key=["timestamp"],
             event_time="timestamp",
-            online_enabled=True,
+            online_enabled=False,
         )
+
+    _FEATURE_GROUP = fg
+    return fg
 
 
 def read_feature_group(
