@@ -170,10 +170,19 @@ def register_models(
     with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2)
 
+    # Hopsworks requires a flat {str: float} metrics dict; flatten the nested
+    # per-horizon metrics (the full nested version is kept in metadata.json).
+    flat_metrics = {}
+    for target in config.TARGET_COLUMNS:
+        for metric_name, value in metrics.get(target, {}).items():
+            flat_metrics[f"{target}_{metric_name}"] = float(value)
+    if "avg_rmse" in metrics:
+        flat_metrics["avg_rmse"] = float(metrics["avg_rmse"])
+
     mr = get_model_registry()
     model_obj = mr.python.create_model(
         name=config.MODEL_NAME,
-        metrics=metrics,
+        metrics=flat_metrics,
         description="Best AQI forecaster for Karachi (24/48/72h)",
     )
     model_obj.save(str(model_path))
