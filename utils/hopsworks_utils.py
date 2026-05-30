@@ -129,11 +129,15 @@ def read_feature_group(
 
 
 def insert_features(df: pd.DataFrame, upsert: bool = True) -> None:
-    """Insert or upsert rows into the feature group.
+    """Insert rows into the feature group.
+
+    Feature groups with a primary key upsert automatically on insert, so no
+    explicit ``upsert`` flag is passed to the current Hopsworks SDK. The
+    ``upsert`` parameter is retained for backward-compatible call sites.
 
     Args:
         df: Feature DataFrame with UTC timestamp.
-        upsert: Whether to upsert on primary key.
+        upsert: Retained for compatibility; upsert is implicit via primary key.
     """
     if df.empty:
         logger.warning("No rows to insert.")
@@ -141,7 +145,7 @@ def insert_features(df: pd.DataFrame, upsert: bool = True) -> None:
     out = df.copy()
     out["timestamp"] = pd.to_datetime(out["timestamp"], utc=True)
     fg = get_or_create_feature_group()
-    fg.insert(out, write_options={"wait_for_job": True}, upsert=upsert)
+    fg.insert(out, write_options={"wait_for_job": True})
     logger.info("Inserted %d rows into feature group.", len(out))
 
 
