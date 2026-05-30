@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Optional, Tuple
+from typing import Optional
 
 import hopsworks
 import pandas as pd
@@ -14,11 +14,14 @@ import config
 logger = logging.getLogger(__name__)
 
 
-def get_hopsworks_connection() -> hopsworks.connection.Connection:
-    """Connect to Hopsworks using API key from environment.
+def get_project():
+    """Log in to Hopsworks and return the project.
+
+    ``hopsworks.login`` returns a ``Project`` object directly, so the project
+    name is passed to ``login`` rather than fetched from a separate connection.
 
     Returns:
-        Hopsworks connection object.
+        Hopsworks Project instance.
 
     Raises:
         ValueError: If ``HOPSWORKS_API_KEY`` is not set.
@@ -26,7 +29,10 @@ def get_hopsworks_connection() -> hopsworks.connection.Connection:
     api_key = os.getenv("HOPSWORKS_API_KEY")
     if not api_key:
         raise ValueError("HOPSWORKS_API_KEY environment variable is required.")
-    return hopsworks.login(api_key_value=api_key)
+    return hopsworks.login(
+        api_key_value=api_key,
+        project=config.HOPSWORKS_PROJECT,
+    )
 
 
 def get_feature_store():
@@ -35,8 +41,7 @@ def get_feature_store():
     Returns:
         Hopsworks FeatureStore instance.
     """
-    conn = get_hopsworks_connection()
-    project = conn.get_project(config.HOPSWORKS_PROJECT)
+    project = get_project()
     return project.get_feature_store()
 
 
@@ -121,6 +126,5 @@ def get_model_registry():
     Returns:
         Hopsworks ModelRegistry instance.
     """
-    conn = get_hopsworks_connection()
-    project = conn.get_project(config.HOPSWORKS_PROJECT)
+    project = get_project()
     return project.get_model_registry()
