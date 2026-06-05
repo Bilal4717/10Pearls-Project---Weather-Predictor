@@ -15,9 +15,20 @@ from sklearn.preprocessing import StandardScaler
 import config
 from utils.feature_engineering import build_single_row_features, get_feature_columns
 from utils.hopsworks_utils import get_model_registry, read_feature_group
-from utils.model_utils import LSTMRegressor, predict_lstm
 
 logger = logging.getLogger(__name__)
+
+# torch/LSTM support is optional at inference time. The deployed dashboard and
+# API only need it if the registered best model is an LSTM; otherwise (e.g.
+# XGBoost) we avoid importing torch so lightweight deployments don't need it.
+try:
+    from utils.model_utils import LSTMRegressor, predict_lstm
+
+    _TORCH_AVAILABLE = True
+except Exception:  # pragma: no cover - torch not installed in slim envs
+    LSTMRegressor = None
+    predict_lstm = None
+    _TORCH_AVAILABLE = False
 
 ARTIFACTS_DIR = Path(__file__).resolve().parents[1] / "artifacts"
 
@@ -89,7 +100,7 @@ def predict_forecast(
 
     X_scaled = scaler.transform(X)
 
-    if isinstance(model, LSTMRegressor):
+    if _TORCH_AVAILABLE and LSTMRegressor is not None and isinstance(model, LSTMRegressor):
         preds = predict_lstm(model, X_scaled)
         pred = preds[-1] if len(preds) else np.zeros(3)
     elif hasattr(model, "predict"):

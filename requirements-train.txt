@@ -1,0 +1,10 @@
+# Heavy training- and analysis-only dependencies.
+# Installed in the Training Pipeline (GitHub Actions) and for local EDA.
+# NOT required by the Streamlit dashboard, FastAPI, feature, or backfill pipelines.
+-r requirements.txt
+torch>=2.1.0
+shap>=0.44.0
+matplotlib>=3.8.0
+seaborn>=0.13.0
+statsmodels>=0.14.0
+jupyter>=1.0.0
