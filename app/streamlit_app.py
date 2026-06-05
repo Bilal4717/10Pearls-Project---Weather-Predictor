@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -10,9 +11,41 @@ import pandas as pd
 import plotly.graph_objects as go
 import requests
 import streamlit as st
+from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+# Load credentials. Locally this reads .env; on Streamlit Cloud the values come
+# from st.secrets, which we mirror into environment variables so the Hopsworks
+# and AQICN clients (which use os.getenv) work in both environments.
+load_dotenv(ROOT / ".env")
+
+
+def _bridge_secrets_to_env() -> str:
+    """Mirror Streamlit secrets into env vars and return the API base URL.
+
+    Returns:
+        API base URL (defaults to localhost).
+    """
+    api_base = "http://localhost:8000"
+    try:
+        secrets = st.secrets
+    except Exception:
+        return api_base
+    for key in ("AQICN_TOKEN", "HOPSWORKS_API_KEY"):
+        try:
+            if key in secrets and secrets[key]:
+                os.environ[key] = str(secrets[key])
+        except Exception:
+            continue
+    try:
+        if "API_BASE_URL" in secrets and secrets["API_BASE_URL"]:
+            api_base = str(secrets["API_BASE_URL"])
+    except Exception:
+        pass
+    return api_base
+
 
 import config
 from utils.alerts import check_alerts, get_aqi_category
@@ -21,7 +54,7 @@ from utils.hopsworks_utils import read_feature_group
 from utils.inference import get_feature_importance, predict_forecast
 from utils.openmeteo_client import OpenMeteoClient
 
-API_BASE = st.secrets.get("API_BASE_URL", "http://localhost:8000") if hasattr(st, "secrets") else "http://localhost:8000"
+API_BASE = _bridge_secrets_to_env()
 
 # Page config
 st.set_page_config(

@@ -1,5 +1,9 @@
 .env
+.streamlit/secrets.toml
 .cache/
+.cache.sqlite
+*.sqlite
+install_log.txt
 logs/
 artifacts/
 __pycache__/
