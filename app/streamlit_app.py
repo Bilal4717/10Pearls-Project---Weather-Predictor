@@ -179,7 +179,7 @@ def render_current(data: dict) -> None:
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown(
-            f'<p class="aqi-metric" style="color:{color}">{aqi_val}</p>',
+            f'<p class="aqi-metric" style="color:{color}">{aqi_val:.0f}</p>',
             unsafe_allow_html=True,
         )
         st.write("Current AQI")
@@ -187,12 +187,15 @@ def render_current(data: dict) -> None:
         st.markdown(f"**{category}**")
         st.write("AQI Category")
     with c3:
-        pm25 = aqi_data.get("pm25", "N/A")
-        st.metric("PM2.5", f"{pm25} µg/m³" if pm25 != "N/A" else "N/A")
+        pm25 = aqi_data.get("pm25")
+        st.metric("PM2.5", f"{pm25:.2f} µg/m³" if pm25 is not None else "N/A")
     with c4:
-        temp = weather.get("temperature_2m", "N/A")
-        hum = weather.get("relative_humidity_2m", "N/A")
-        st.metric("Temp / Humidity", f"{temp}°C / {hum}%" if temp != "N/A" else "N/A")
+        temp = weather.get("temperature_2m")
+        hum = weather.get("relative_humidity_2m")
+        if temp is not None and hum is not None:
+            st.metric("Temp / Humidity", f"{temp:.2f}°C / {hum:.2f}%")
+        else:
+            st.metric("Temp / Humidity", "N/A")
 
 
 def render_alerts(aqi_val: float, forecast: dict) -> None:
