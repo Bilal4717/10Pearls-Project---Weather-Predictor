@@ -332,6 +332,19 @@ def fetch_importance_local() -> pd.DataFrame:
     return pd.DataFrame(items)
 
 
+def _md(html: str) -> None:
+    """Render an HTML block, stripping per-line indentation.
+
+    Streamlit's Markdown parser turns lines indented 4+ spaces into code
+    blocks, so we compact the HTML to a single line before rendering.
+
+    Args:
+        html: HTML markup to render.
+    """
+    compact = "".join(line.strip() for line in html.strip().splitlines())
+    st.markdown(compact, unsafe_allow_html=True)
+
+
 def section_title(title: str, eyebrow: str = "") -> None:
     """Render a styled section heading with optional eyebrow.
 
@@ -340,16 +353,13 @@ def section_title(title: str, eyebrow: str = "") -> None:
         eyebrow: Small uppercase label above the title.
     """
     eb = f'<div class="eyebrow">{eyebrow}</div>' if eyebrow else ""
-    st.markdown(
-        f'<div class="section"><span class="bar"></span><div>{eb}<h2>{title}</h2></div></div>',
-        unsafe_allow_html=True,
-    )
+    _md(f'<div class="section"><span class="bar"></span><div>{eb}<h2>{title}</h2></div></div>')
 
 
 def render_header() -> None:
     """Render dashboard hero header with last updated time."""
     updated = datetime.now(timezone.utc).strftime("%b %d, %Y · %H:%M UTC")
-    st.markdown(
+    _md(
         f"""
         <div class="glass hero">
             <div class="glow" style="width:320px;height:320px;top:-130px;right:-80px;
@@ -374,8 +384,7 @@ def render_header() -> None:
                 </div>
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
@@ -409,7 +418,7 @@ def render_current(data: dict) -> None:
         weather_sub_parts.append(f"Wind {wind:.0f} km/h")
     weather_sub = " · ".join(weather_sub_parts) or "Live conditions"
 
-    st.markdown(
+    _md(
         f"""
         <div class="grid grid-4">
             <div class="glass metric hoverable">
@@ -438,8 +447,7 @@ def render_current(data: dict) -> None:
                 <div class="sub">{weather_sub}</div>
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
@@ -469,7 +477,7 @@ def render_alerts(aqi_val: float, forecast: dict) -> None:
             "Sensitive groups should remain indoors. Wear an N95 mask outdoors and "
             "avoid prolonged exertion. Air purifiers recommended in living areas."
         )
-    st.markdown(
+    _md(
         f"""
         <div class="alert">
             <div class="ic">⚠️</div>
@@ -478,8 +486,7 @@ def render_alerts(aqi_val: float, forecast: dict) -> None:
                 <p style="margin:0.4rem 0 0 0;font-size:0.9rem;color:var(--muted);line-height:1.55;">{rec}</p>
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
@@ -521,7 +528,7 @@ def render_forecast_cards(forecast: dict, current_aqi: float) -> None:
         """
         prev = val
 
-    st.markdown(f'<div class="grid grid-3">{cards}</div>', unsafe_allow_html=True)
+    _md(f'<div class="grid grid-3">{cards}</div>')
 
 
 def render_history_chart(history: pd.DataFrame, forecast: dict) -> None:
@@ -531,10 +538,9 @@ def render_history_chart(history: pd.DataFrame, forecast: dict) -> None:
         history: Historical AQI DataFrame.
         forecast: Forecast dict.
     """
-    st.markdown(
+    _md(
         '<div class="eyebrow" style="margin-bottom:0.2rem;">7 days actual · 3 days forecast</div>'
-        '<div class="display" style="font-size:1.1rem;font-weight:600;margin-bottom:0.6rem;">AQI Trend Analysis</div>',
-        unsafe_allow_html=True,
+        '<div class="display" style="font-size:1.1rem;font-weight:600;margin-bottom:0.6rem;">AQI Trend Analysis</div>'
     )
 
     fig = go.Figure()
@@ -642,15 +648,14 @@ def render_pollutants(aqi_data: dict) -> None:
                 </div>
             </div>
         """
-    st.markdown(
+    _md(
         f"""
         <div class="glass" style="padding:1.7rem;height:100%;">
             <div class="eyebrow">Concentration · µg/m³</div>
             <div class="display" style="font-size:1.1rem;font-weight:600;margin:0.2rem 0 1.4rem 0;">Pollutant Breakdown</div>
             {rows}
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
@@ -661,15 +666,14 @@ def render_feature_importance(importance_df: pd.DataFrame) -> None:
         importance_df: DataFrame with feature and importance columns.
     """
     if importance_df.empty:
-        st.markdown(
+        _md(
             """
             <div class="glass" style="padding:1.7rem;height:100%;">
                 <div class="eyebrow">Mean |SHAP| · model explainability</div>
                 <div class="display" style="font-size:1.1rem;font-weight:600;margin:0.2rem 0 1.4rem 0;">Feature Importance</div>
                 <p style="color:var(--muted);font-size:0.88rem;">Feature importance will appear after the training pipeline runs.</p>
             </div>
-            """,
-            unsafe_allow_html=True,
+            """
         )
         return
 
@@ -692,15 +696,14 @@ def render_feature_importance(importance_df: pd.DataFrame) -> None:
                 </div>
             </div>
         """
-    st.markdown(
+    _md(
         f"""
         <div class="glass" style="padding:1.7rem;height:100%;">
             <div class="eyebrow">Mean |SHAP| · model explainability</div>
             <div class="display" style="font-size:1.1rem;font-weight:600;margin:0.2rem 0 1.4rem 0;">Feature Importance</div>
             {rows}
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
@@ -718,18 +721,12 @@ def render_legend() -> None:
                 <div style="margin-top:0.5rem;font-size:0.74rem;line-height:1.5;color:var(--muted);">{cat['health']}</div>
             </div>
         """
-    st.markdown(
-        f'<div class="glass" style="overflow:hidden;"><div class="grid grid-6" style="gap:0;">{cells}</div></div>',
-        unsafe_allow_html=True,
-    )
+    _md(f'<div class="glass" style="overflow:hidden;"><div class="grid grid-6" style="gap:0;">{cells}</div></div>')
 
 
 def render_footer() -> None:
     """Render dashboard footer."""
-    st.markdown(
-        '<div class="footer"><p>Data · AQICN · Open-Meteo · Hopsworks Feature Store</p></div>',
-        unsafe_allow_html=True,
-    )
+    _md('<div class="footer"><p>Data · AQICN · Open-Meteo · Hopsworks Feature Store</p></div>')
 
 
 def main() -> None:
