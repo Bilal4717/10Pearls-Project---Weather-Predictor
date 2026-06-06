@@ -64,15 +64,98 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Dark theme CSS
+# Theme + custom styling
 st.markdown(
     """
     <style>
-    .stApp { background-color: #0e1117; color: #fafafa; }
-    .aqi-metric { font-size: 3rem; font-weight: bold; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+
+    .stApp {
+        background: radial-gradient(1200px 600px at 15% -10%, #16203a 0%, #0b0f1a 45%, #080a12 100%);
+        color: #e7ecf3;
+    }
+
+    /* Tighten default top padding */
+    .block-container { padding-top: 2.2rem; padding-bottom: 3rem; max-width: 1200px; }
+
+    /* Hide Streamlit chrome for a cleaner look */
+    #MainMenu, footer, header [data-testid="stHeader"] { visibility: hidden; }
+    [data-testid="stHeader"] { background: transparent; }
+
+    /* ---------- Hero header ---------- */
+    .hero {
+        display: flex; align-items: center; gap: 1rem;
+        padding: 1.6rem 1.8rem;
+        border-radius: 20px;
+        background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(56,189,248,0.10));
+        border: 1px solid rgba(255,255,255,0.08);
+        box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+        margin-bottom: 0.4rem;
+    }
+    .hero-icon { font-size: 2.8rem; line-height: 1; }
+    .hero-title {
+        font-size: 2.1rem; font-weight: 800; margin: 0;
+        background: linear-gradient(90deg, #c7d2fe, #7dd3fc);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        letter-spacing: -0.5px;
+    }
+    .hero-sub { color: #9aa6b8; font-size: 0.9rem; margin-top: 0.2rem; }
+    .hero-sub .chip {
+        display: inline-block; background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.08);
+        padding: 2px 10px; border-radius: 999px; margin-right: 6px; font-size: 0.78rem;
+    }
+
+    /* ---------- Section titles ---------- */
+    .section-title {
+        font-size: 1.15rem; font-weight: 700; color: #f1f5f9;
+        margin: 1.8rem 0 0.9rem 0; display: flex; align-items: center; gap: 0.5rem;
+    }
+    .section-title::before {
+        content: ""; width: 4px; height: 1.05rem; border-radius: 4px;
+        background: linear-gradient(180deg, #818cf8, #38bdf8);
+    }
+
+    /* ---------- Metric cards ---------- */
+    .card {
+        background: rgba(255,255,255,0.035);
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 16px; padding: 1.2rem 1.3rem; height: 100%;
+        backdrop-filter: blur(6px);
+        transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.16); }
+    .card-label { color: #9aa6b8; font-size: 0.82rem; font-weight: 500;
+        text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.45rem; }
+    .card-value { font-size: 2.1rem; font-weight: 800; line-height: 1.1; }
+    .card-unit { font-size: 0.95rem; font-weight: 500; color: #9aa6b8; margin-left: 4px; }
+    .card-badge {
+        display: inline-block; padding: 3px 12px; border-radius: 999px;
+        font-size: 0.82rem; font-weight: 600;
+    }
+
+    /* ---------- Forecast cards ---------- */
+    .fc-card {
+        background: rgba(255,255,255,0.035);
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 16px; padding: 1.4rem; text-align: center;
+        transition: transform 0.15s ease;
+    }
+    .fc-card:hover { transform: translateY(-3px); }
+    .fc-value { font-size: 2.6rem; font-weight: 800; line-height: 1; }
+    .fc-label { color: #cbd5e1; font-weight: 600; margin-top: 0.5rem; }
+    .fc-cat { color: #9aa6b8; font-size: 0.82rem; margin-top: 0.2rem; }
+    .fc-ring {
+        width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-bottom: 0.6rem;
+    }
+
     .alert-banner {
-        background: #7f1d1d; padding: 1rem; border-radius: 8px;
-        border-left: 5px solid #ef4444; margin: 1rem 0;
+        background: linear-gradient(135deg, rgba(127,29,29,0.85), rgba(153,27,27,0.65));
+        padding: 1rem 1.2rem; border-radius: 14px;
+        border-left: 4px solid #ef4444; margin: 1rem 0;
+        box-shadow: 0 6px 24px rgba(239,68,68,0.15);
     }
     </style>
     """,
@@ -155,12 +238,33 @@ def fetch_importance_local() -> pd.DataFrame:
     return pd.DataFrame(items)
 
 
+def section_title(label: str) -> None:
+    """Render a styled section heading.
+
+    Args:
+        label: Section title text.
+    """
+    st.markdown(f'<div class="section-title">{label}</div>', unsafe_allow_html=True)
+
+
 def render_header() -> None:
-    """Render dashboard header with last updated time."""
-    st.title("🌫️ Karachi AQI Forecast Dashboard")
-    st.caption(
-        f"Last updated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} | "
-        f"Station {config.AQICN_STATION} | {config.TIMEZONE}"
+    """Render dashboard hero header with last updated time."""
+    updated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    st.markdown(
+        f"""
+        <div class="hero">
+            <div class="hero-icon">🌫️</div>
+            <div>
+                <p class="hero-title">Karachi AQI Forecast</p>
+                <div class="hero-sub">
+                    <span class="chip">🕒 {updated}</span>
+                    <span class="chip">📍 Station {config.AQICN_STATION}</span>
+                    <span class="chip">🌐 {config.TIMEZONE}</span>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
 
@@ -176,26 +280,58 @@ def render_current(data: dict) -> None:
     category = get_aqi_category(aqi_val)
     color = aqi_color(aqi_val)
 
+    pm25 = aqi_data.get("pm25")
+    pm25_str = f"{pm25:.2f}" if pm25 is not None else "N/A"
+    temp = weather.get("temperature_2m")
+    hum = weather.get("relative_humidity_2m")
+    temp_str = f"{temp:.1f}°C" if temp is not None else "N/A"
+    hum_str = f"{hum:.0f}%" if hum is not None else "N/A"
+
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown(
-            f'<p class="aqi-metric" style="color:{color}">{aqi_val:.0f}</p>',
+            f"""
+            <div class="card">
+                <div class="card-label">Current AQI</div>
+                <div class="card-value" style="color:{color}">{aqi_val:.0f}</div>
+            </div>
+            """,
             unsafe_allow_html=True,
         )
-        st.write("Current AQI")
     with c2:
-        st.markdown(f"**{category}**")
-        st.write("AQI Category")
+        st.markdown(
+            f"""
+            <div class="card">
+                <div class="card-label">Air Quality</div>
+                <div style="margin-top:0.4rem">
+                    <span class="card-badge" style="background:{color}22;color:{color};
+                    border:1px solid {color}55">{category}</span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
     with c3:
-        pm25 = aqi_data.get("pm25")
-        st.metric("PM2.5", f"{pm25:.2f} µg/m³" if pm25 is not None else "N/A")
+        st.markdown(
+            f"""
+            <div class="card">
+                <div class="card-label">PM2.5</div>
+                <div class="card-value">{pm25_str}<span class="card-unit">µg/m³</span></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
     with c4:
-        temp = weather.get("temperature_2m")
-        hum = weather.get("relative_humidity_2m")
-        if temp is not None and hum is not None:
-            st.metric("Temp / Humidity", f"{temp:.2f}°C / {hum:.2f}%")
-        else:
-            st.metric("Temp / Humidity", "N/A")
+        st.markdown(
+            f"""
+            <div class="card">
+                <div class="card-label">Temp / Humidity</div>
+                <div class="card-value">{temp_str}
+                    <span class="card-unit">/ {hum_str}</span></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 def render_alerts(aqi_val: float, forecast: dict) -> None:
@@ -230,18 +366,19 @@ def render_forecast_cards(forecast: dict) -> None:
         forecast: Forecast result dict.
     """
     preds = forecast.get("predictions", {})
-    horizons = [("24h", "+24 Hours"), ("48h", "+48 Hours"), ("72h", "+72 Hours")]
+    horizons = [("24h", "Tomorrow", "+24h"), ("48h", "In 2 Days", "+48h"), ("72h", "In 3 Days", "+72h")]
     cols = st.columns(3)
-    for col, (key, label) in zip(cols, horizons):
+    for col, (key, label, sub) in zip(cols, horizons):
         val = preds.get(key, 0)
+        color = aqi_color(val)
         with col:
             st.markdown(
                 f"""
-                <div style="background:#1a1f2e;padding:1.5rem;border-radius:12px;
-                border-top:4px solid {aqi_color(val)};">
-                <h3 style="margin:0;color:{aqi_color(val)}">{val:.0f}</h3>
-                <p style="margin:0.5rem 0 0 0;">{label}</p>
-                <small>{get_aqi_category(val)}</small>
+                <div class="fc-card" style="border-top:3px solid {color}">
+                    <span class="fc-ring" style="background:{color};box-shadow:0 0 12px {color}"></span>
+                    <div class="fc-value" style="color:{color}">{val:.0f}</div>
+                    <div class="fc-label">{label} <span style="color:#64748b">· {sub}</span></div>
+                    <div class="fc-cat">{get_aqi_category(val)}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -299,11 +436,15 @@ def render_history_chart(history: pd.DataFrame, forecast: dict) -> None:
 
     fig.update_layout(
         template="plotly_dark",
-        title="AQI History & 3-Day Forecast",
+        title=None,
         xaxis_title="Time (UTC)",
         yaxis_title="AQI",
-        height=450,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02),
+        height=420,
+        margin=dict(t=20, b=10, l=10, r=10),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Inter, sans-serif", color="#cbd5e1"),
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -326,9 +467,13 @@ def render_pollutants(aqi_data: dict) -> None:
     )
     fig.update_layout(
         template="plotly_dark",
-        title="Current Pollutant Levels",
+        title=None,
         yaxis_title="Concentration",
-        height=350,
+        height=340,
+        margin=dict(t=20, b=10, l=10, r=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Inter, sans-serif", color="#cbd5e1"),
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -353,16 +498,19 @@ def render_feature_importance(importance_df: pd.DataFrame) -> None:
     )
     fig.update_layout(
         template="plotly_dark",
-        title="Top 10 Feature Importances (SHAP)",
+        title=None,
         xaxis_title="Mean |SHAP|",
-        height=400,
+        height=340,
+        margin=dict(t=20, b=10, l=10, r=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Inter, sans-serif", color="#cbd5e1"),
     )
     st.plotly_chart(fig, use_container_width=True)
 
 
 def render_legend() -> None:
     """Render AQI category legend table."""
-    st.subheader("AQI Category Guide")
     legend_df = pd.DataFrame(
         [
             {
@@ -391,29 +539,30 @@ def main() -> None:
 
     aqi_val = (current.get("aqi") or {}).get("aqi") or 0
 
-    st.subheader("Current Conditions")
+    section_title("Current Conditions")
     render_current(current)
 
     if forecast:
         render_alerts(aqi_val, forecast)
 
-    st.subheader("3-Day Forecast")
+    section_title("3-Day Forecast")
     if forecast:
         render_forecast_cards(forecast)
     else:
         st.warning("Forecast unavailable. Run feature + training pipelines first.")
 
-    st.subheader("Historical Trend")
+    section_title("Historical Trend")
     render_history_chart(history, forecast or {})
 
     col1, col2 = st.columns(2)
     with col1:
-        st.subheader("Pollutant Breakdown")
+        section_title("Pollutant Breakdown")
         render_pollutants(current.get("aqi") or {})
     with col2:
-        st.subheader("Feature Importance")
+        section_title("Feature Importance")
         render_feature_importance(importance)
 
+    section_title("AQI Category Guide")
     render_legend()
 
 
