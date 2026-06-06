@@ -2,6 +2,20 @@
 
 End-to-end Air Quality Index (AQI) prediction system for **Karachi, Pakistan**. Predicts AQI **24, 48, and 72 hours** ahead using live pollutant data, weather features, and automated ML pipelines on Hopsworks.
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Streamlit%20Cloud-FF4B4B?logo=streamlit&logoColor=white)](https://10pearls-project---weather-predictor-phjmr4gzi5sbu98dzuqksa.streamlit.app/)
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Hopsworks](https://img.shields.io/badge/Feature%20Store-Hopsworks-1EB182)](https://www.hopsworks.ai/)
+
+> **🔴 Live dashboard:** **https://10pearls-project---weather-predictor-phjmr4gzi5sbu98dzuqksa.streamlit.app/**
+
+## Highlights
+
+- **3-day AQI forecasts** (24/48/72h) for Karachi with confidence intervals and health alerts.
+- **Fully serverless & automated** — GitHub Actions run the hourly feature ingestion and daily retraining; no servers to manage.
+- **Model selection** across Ridge, Random Forest, XGBoost, and an LSTM, with the best model (lowest avg RMSE) auto-registered.
+- **Explainability** via SHAP feature importances surfaced in the dashboard.
+- **Modern glassmorphism dashboard** built in Streamlit, deployed free on Streamlit Cloud.
+
 ## Architecture
 
 ```
@@ -147,6 +161,21 @@ streamlit run app/streamlit_app.py
 
 Set `API_BASE_URL` in Streamlit secrets if using remote API.
 
+## Dashboard
+
+The Streamlit dashboard (**[live here](https://10pearls-project---weather-predictor-phjmr4gzi5sbu98dzuqksa.streamlit.app/)**) presents:
+
+- **Hero header** with last-updated time, station, and timezone.
+- **Current conditions** — live AQI, category, PM2.5, temperature/humidity/wind.
+- **Health alerts** that appear automatically when AQI is unhealthy.
+- **3-day forecast cards** (24/48/72h) with category and trend vs. previous horizon.
+- **Historical trend chart** — 7 days observed + 3-day forecast with AQI category bands.
+- **Pollutant breakdown** — PM2.5/PM10/NO₂/O₃/CO/SO₂ concentration bars.
+- **Feature importance** — top SHAP features from the registered model.
+- **AQI category guide** — US EPA reference table.
+
+> Data is cached for 1 hour and refreshes automatically. The dashboard runs on live Open-Meteo data plus the registered model, so it stays available even if a pipeline run fails.
+
 ## API Documentation
 
 | Endpoint | Method | Description |
@@ -193,14 +222,19 @@ curl http://localhost:8000/forecast
 
 ## Deploy Streamlit Cloud
 
+**Live deployment:** https://10pearls-project---weather-predictor-phjmr4gzi5sbu98dzuqksa.streamlit.app/
+
+To deploy your own instance:
+
 1. Push to GitHub
 2. Go to [share.streamlit.io](https://share.streamlit.io)
 3. Connect repository
 4. Set **Main file path**: `app/streamlit_app.py`
-5. Add secrets in Streamlit Cloud:
+5. Under **Advanced settings**, choose **Python 3.11** (3.14 lacks wheels for `hopsworks`/`confluent-kafka`)
+6. Add secrets in Streamlit Cloud:
    - `AQICN_TOKEN`
    - `HOPSWORKS_API_KEY`
-6. Deploy
+7. Deploy
 
 ## Models
 
